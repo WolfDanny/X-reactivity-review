@@ -5,14 +5,20 @@ from copy import deepcopy
 from itertools import chain, combinations
 from random import seed, uniform
 
-seed('A random string to generate a seed that allows us to reproduce the same network each time')
-num_clonotypes = 4  # Number of clonotypes
-num_peptides = 10  # Number of peptides
-birth_rate_value = 1.0
-peptide_stimulus_value = 10.0
-peptide_prob_value = 2/5  # Probability that a peptide will be recognised by a random clonotype
+seed('A string to use as a seed that allows us to reproduce the same network each time')
+num_clonotypes = 5  # Number of clonotypes
+num_peptides = 30  # Number of peptides
+birth_rate_value = 2.5
+death_rate_value = 1.0
+peptide_stimulus_value = 150.0
+peptide_prob_value = 6/30  # Probability that a peptide will be recognised by a random clonotype
 realisations = 1  # Number of realisations
 sharing_factor = 1.5
+
+priming_start = 0.5
+priming_end = 0.6
+challenge_start = 1.1
+challenge_end = 1.2
 
 
 class Peptide:
@@ -76,7 +82,7 @@ class Peptide:
 class Clonotype:
     """Class to represent clonotypes"""
 
-    def __init__(self, num_cells, position_value, br_value):
+    def __init__(self, num_cells, position_value, br_value, dr_value):
         """
         Parameters
         ----------
@@ -86,13 +92,29 @@ class Clonotype:
             Number of the clonotype.
         br_value : float
             Birth rate for a cell in homeostasis
+        dr_value : float
+            Death rate for a cell.
         """
 
-        self.cells = num_cells
+        self.naive = num_cells
+        self.effector = 0
+        self.memory = 0
         self.position = position_value
-        self.homeostatic_br = br_value
+        self.br = br_value
+        self.dr = dr_value
         self.peptides = []
         self.recognised = 0
+
+    def sum_cells(self):
+        """
+        Sum the cells of the clonotype in all compartments.
+
+        Returns
+        -------
+        int
+            Total number of cells
+        """
+        return self.naive + self.effector + self.memory
 
     def add_peptide(self, peptide_list, subset=None):
         """
@@ -125,7 +147,7 @@ class Clonotype:
                         self.recognised += 1
                         peptide_list[index].add_clonotype(self)
 
-    def birth_rate(self, clonotype_list, peptide_list):
+    def birth_rate(self, clonotype_list=None, peptide_list=None):
         """
         Calculates the rate at which a new cell of the clonotype is born.
 
@@ -139,15 +161,38 @@ class Clonotype:
         Returns
         -------
         float
-            Birth rate for clone in state.
+            Birth rate of a cell in the clonotype.
         """
 
-        foreign = 0.0
-        for peptide in peptide_list:
-            if peptide.position in self.peptides:
-                foreign += peptide.cell_stimulus(clonotype_list)
+        if clonotype_list is None and peptide_list is None:
+            return self.cells * self.br
 
-        return self.cells * (self.homeostatic_br + foreign)
+        if clonotype_list is not None and peptide_list is not None:
+            infection = 0.0
+            for peptide in peptide_list:
+                if peptide.position in self.peptides:
+                    infection += peptide.cell_stimulus(clonotype_list)
+
+            return self.cells * (self.br + infection)
+
+    def death_rate(self):
+        """
+        Calculates the rate at which a cell of the clonotype dies.
+
+        Returns
+        -------
+        float
+            Death rate of a cell in the clonotype.
+        """
+        
+        return self.cells * self.dr
+
+    def death_rate_effector(self):
+        """
+        TEST FUNCTION
+        """
+
+        return 15 * self.cells * self.dr
 
     def birth(self):
         self.cells += 1
@@ -165,10 +210,10 @@ class Clonotype:
         self.cells -= num_deaths
 
 
-clones = [Clonotype(5, i) for i in range(num_clonotypes)]
-peptides = [Peptide(peptide_prob_value, i) for i in range(num_peptides)]
+initial_clones = [Clonotype(5, i, birth_rate_value, death_rate_value) for i in range(num_clonotypes)]
+peptides = [Peptide(peptide_prob_value, i, peptide_stimulus_value) for i in range(num_peptides)]
 
-for clone in clones:
+for clone in initial_clones:
     clone.add_peptide(peptides)
 
 seed()
@@ -177,12 +222,190 @@ states = []
 times = []
 
 for current_realisation in range(realisations):
-    current_states = [[clone.cells for clone in clones]]
-    current_times = [0]
 
-    # Gillespie stuff
-    while 1 < 0:
-        pass
+    clones = deepcopy(initial_clones)
 
-    states.append(current_states)
-    times.append(current_times)
+    realisation_states = [deepcopy([clone.cells for clone in clones])]
+    realisation_times = [0.0]
+
+    current_time = 0.0
+
+    # Gillespie algorithm
+    # Pre-infection stage
+    while True:
+        r1 = uniform(0.0, 1.0)
+        r2 = uniform(0.0, 1.0)
+
+        alpha = np.array([])
+        for clone in clones:
+            alpha = np.append(alpha, clone.birth_rate())
+        for clone in clones:
+            alpha = np.append(alpha, clone.death_rate())
+
+        alpha_sum = alpha.sum()
+
+        dt = -math.log(r1) / alpha_sum
+        current_time += dt
+
+        if current_time >= priming_start:
+            realisation_states.append(deepcopy([clone.cells for clone in clones]))
+            realisation_times.append(deepcopy(priming_start))
+            break
+
+        for current_rate in range(alpha.size):
+            if (sum(alpha[:current_rate]) / alpha_sum) <= r2 < (sum(alpha[:current_rate + 1]) / alpha_sum):
+                current_event = int(current_rate / num_clonotypes)
+                current_clone = current_rate % num_clonotypes
+
+                if current_event == 0:  # Birth event
+                    clones[current_clone].birth()
+                if current_event == 1:  # Death event
+                    clones[current_clone].death()
+
+        realisation_states.append(deepcopy([clone.cells for clone in clones]))
+        realisation_times.append(deepcopy(current_time))
+
+    # Priming stage
+    while True:
+        r1 = uniform(0.0, 1.0)
+        r2 = uniform(0.0, 1.0)
+
+        alpha = np.array([])
+        for clone in clones:
+            alpha = np.append(alpha, clone.birth_rate(clones, peptides[:int(len(peptides) / 2)]))
+        for clone in clones:
+            alpha = np.append(alpha, clone.death_rate())
+
+        alpha_sum = alpha.sum()
+
+        dt = -math.log(r1) / alpha_sum
+        current_time += dt
+
+        if current_time >= priming_end:
+            realisation_states.append(deepcopy([clone.cells for clone in clones]))
+            realisation_times.append(deepcopy(priming_end))
+            break
+
+        for current_rate in range(alpha.size):
+            if (sum(alpha[:current_rate]) / alpha_sum) <= r2 < (sum(alpha[:current_rate + 1]) / alpha_sum):
+                current_event = int(current_rate / num_clonotypes)
+                current_clone = current_rate % num_clonotypes
+
+                if current_event == 0:  # Birth event
+                    clones[current_clone].birth()
+                if current_event == 1:  # Death event
+                    clones[current_clone].death()
+
+        realisation_states.append(deepcopy([clone.cells for clone in clones]))
+        realisation_times.append(deepcopy(current_time))
+
+    # Memory stage
+    while True:
+        r1 = uniform(0.0, 1.0)
+        r2 = uniform(0.0, 1.0)
+
+        alpha = np.array([])
+        for clone in clones:
+            alpha = np.append(alpha, clone.birth_rate())
+        for clone in clones:
+            if current_time < priming_end + 0.1:
+                alpha = np.append(alpha, clone.death_rate_effector())
+            else:
+                alpha = np.append(alpha, clone.death_rate())
+            # alpha = np.append(alpha, clone.death_rate())
+
+        alpha_sum = alpha.sum()
+
+        dt = -math.log(r1) / alpha_sum
+        current_time += dt
+
+        if current_time >= challenge_start:
+            realisation_states.append(deepcopy([clone.cells for clone in clones]))
+            realisation_times.append(deepcopy(challenge_start))
+            break
+
+        for current_rate in range(alpha.size):
+            if (sum(alpha[:current_rate]) / alpha_sum) <= r2 < (sum(alpha[:current_rate + 1]) / alpha_sum):
+                current_event = int(current_rate / num_clonotypes)
+                current_clone = current_rate % num_clonotypes
+
+                if current_event == 0:  # Birth event
+                    clones[current_clone].birth()
+                if current_event == 1:  # Death event
+                    clones[current_clone].death()
+
+        realisation_states.append(deepcopy([clone.cells for clone in clones]))
+        realisation_times.append(deepcopy(current_time))
+
+    # Challenge stage
+    while True:
+        r1 = uniform(0.0, 1.0)
+        r2 = uniform(0.0, 1.0)
+
+        alpha = np.array([])
+        for clone in clones:
+            alpha = np.append(alpha, clone.birth_rate(clones, peptides[int(len(peptides) / 2):]))
+        for clone in clones:
+            alpha = np.append(alpha, clone.death_rate())
+
+        alpha_sum = alpha.sum()
+
+        dt = -math.log(r1) / alpha_sum
+        current_time += dt
+
+        if current_time >= challenge_end:
+            realisation_states.append(deepcopy([clone.cells for clone in clones]))
+            realisation_times.append(deepcopy(challenge_end))
+            break
+
+        for current_rate in range(alpha.size):
+            if (sum(alpha[:current_rate]) / alpha_sum) <= r2 < (sum(alpha[:current_rate + 1]) / alpha_sum):
+                current_event = int(current_rate / num_clonotypes)
+                current_clone = current_rate % num_clonotypes
+
+                if current_event == 0:  # Birth event
+                    clones[current_clone].birth()
+                if current_event == 1:  # Death event
+                    clones[current_clone].death()
+
+        realisation_states.append(deepcopy([clone.cells for clone in clones]))
+        realisation_times.append(deepcopy(current_time))
+
+    # Post-infection stage
+    while current_time < 1.5:
+        r1 = uniform(0.0, 1.0)
+        r2 = uniform(0.0, 1.0)
+
+        alpha = np.array([])
+        for clone in clones:
+            alpha = np.append(alpha, clone.birth_rate())
+        for clone in clones:
+            if current_time < challenge_end + 0.1:
+                alpha = np.append(alpha, clone.death_rate_effector())
+            else:
+                alpha = np.append(alpha, clone.death_rate())
+
+        alpha_sum = alpha.sum()
+
+        dt = -math.log(r1) / alpha_sum
+        current_time += dt
+
+        for current_rate in range(alpha.size):
+            if (sum(alpha[:current_rate]) / alpha_sum) <= r2 < (sum(alpha[:current_rate + 1]) / alpha_sum):
+                current_event = int(current_rate / num_clonotypes)
+                current_clone = current_rate % num_clonotypes
+
+                if current_event == 0:  # Birth event
+                    clones[current_clone].birth()
+                if current_event == 1:  # Death event
+                    clones[current_clone].death()
+
+        realisation_states.append(deepcopy([clone.cells for clone in clones]))
+        realisation_times.append(deepcopy(current_time))
+
+    states.append(deepcopy(realisation_states))
+    times.append(deepcopy(realisation_times))
+
+with open('Data.bin', 'wb') as file:
+    data = (states, times)
+    pickle.dump(data, file)
