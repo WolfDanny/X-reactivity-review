@@ -6,27 +6,28 @@ from itertools import chain, combinations
 from random import seed, uniform, sample, getstate, setstate
 
 seed('Building a random recognition network')  # This is here so that we generate the networks consistently
+reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed,bin file is not found a new seed is used and saved to seed.bin
 num_clonotypes = 3  # Number of clonotypes
 num_peptides = 18  # Number of peptides
 network = 0  # 0 = Unfocussed, 1 = Degree, 2 = Preferential attachment
 starting_cells = 5  # Starting number of cells for every clonotype
 
 naive_homeostatic_value = 10.0  # \varhpi_{i}
-memory_homeostatic_value = 0.3
+memory_homeostatic_value = 0.3  # \sigma_{M}
 naive_matrix_value = np.asarray([[4/9, 2/9, 2/9, 1/9],
                                  [4/9, 2/9, 2/9, 1/9],
                                  [4/9, 2/9, 2/9, 1/9]])
 
-naive_death_value = 1.0
-memory_death_value = 0.2
-effector_death_value = 30.0
+naive_death_value = 1.0  # \mu_{N}
+memory_death_value = 0.2  # \mu_{M}
+effector_death_value = 30.0  # \mu_{E}
 
-naive_differentiation_constant_value = 1.0
-memory_differentiation_constant_value = 2.0
-effector_division_constant_value = 1.0
+naive_differentiation_constant_value = 1.0  # \alpha_{N}
+memory_differentiation_constant_value = 2.0  # \alpha_{M}
+effector_division_constant_value = 1.0  # \lambda_{E}
 
-effector_differentiation_value = (0.1 * effector_death_value) / 0.9
-peptide_stimulus_value = 1000.0
+effector_differentiation_value = (0.1 * effector_death_value) / 0.9  # \psi_{E}
+peptide_stimulus_value = 1000.0  # \gamma(v)
 
 peptide_degree = 8  # Number of recognised peptides on the focussed degree network
 peptide_prob_value = peptide_degree / num_peptides  # Probability that a peptide will be recognised by a clonotype (not used in degree networks)
@@ -35,6 +36,7 @@ realisations = 1  # Number of realisations
 
 effector_division_time = 0.25 / 365  # 6 hour division time for effector cells during infection
 infection_time = 1 / 52  # Infectious period of 1 week
+
 priming_start = 1 / 12
 priming_end = priming_start + infection_time
 challenge_start = 7 / 12
@@ -663,11 +665,15 @@ for clone_index in range(num_clonotypes):
     if network == 2:
         initial_clones[-1].add_peptide(peptides, 2, clone_list=initial_clones)
 
-try:
-    with open('seed.bin', 'rb') as file:
-        seed_value = pickle.load(file)
-        setstate(seed_value)
-except FileNotFoundError:
+if reproduce_last_result:
+    try:
+        with open('seed.bin', 'rb') as file:
+            seed_value = pickle.load(file)
+            setstate(seed_value)
+    except FileNotFoundError:
+        print('Could not find seed.bin. A random realisation will be run instead and the seed will be saved to seed.bin.')
+        seed()
+else:
     seed()
 
 seed_value = getstate()
@@ -691,6 +697,7 @@ for current_realisation in range(realisations):
     current_time = 0.0
 
     # Gillespie algorithm
+
     # Pre-infection stage
     while current_time != priming_start:
         current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, 0, priming_start)
@@ -780,5 +787,6 @@ with open('Parameters.bin', 'wb') as file:
     data = ('num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time', num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time)
     pickle.dump(data, file)
 
-with open('seed.bin', 'wb') as file:
-    pickle.dump(seed_value, file)
+if not reproduce_last_result:
+    with open('seed.bin', 'wb') as file:
+        pickle.dump(seed_value, file)

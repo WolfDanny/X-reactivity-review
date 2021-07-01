@@ -1,8 +1,9 @@
-from pylab import legend,savefig,ion,arange,step,figure,plot,hist,xlabel,ylabel,title,bar,subplot,tight_layout,xlim,ylim
+from pylab import savefig,step
 import matplotlib.pyplot as plt
 import networkx as nx
 import pickle
-from random import seed, uniform, sample
+from itertools import chain, combinations
+from random import uniform, sample
 import numpy as np
 
 plt.rcParams.update({"text.usetex": True})
@@ -482,6 +483,40 @@ class Clonotype:
             self.effector += 1
 
 
+def clone_sets(dimension, clone):
+    """
+    Creates an ordered list of tuples representing all subsets of a set of *dimension* elements that include the *clone*-th element.
+
+    Parameters
+    ----------
+    dimension : int
+        Number of elements.
+    clone : int
+        Specified element (starts at 0).
+
+    Returns
+    -------
+    list[int]
+        List of tuples representing all subsets of a set of *dimension* elements that include the *clone*-th element.
+    """
+
+    if clone >= dimension or clone < 0:
+        return -1
+
+    x = range(dimension)
+    sets = list(chain(*[combinations(x, ni) for ni in range(dimension + 1)]))
+    d = []
+
+    for T in sets:
+        if clone not in T:
+            d.insert(0, sets.index(T))
+
+    for i in d:
+        sets.pop(i)
+
+    return sets
+
+
 with open('Data.bin', 'rb') as file:
     data = pickle.load(file)
         
@@ -537,13 +572,10 @@ height = 5
 figs, graphs = plt.subplots(constrained_layout=False, figsize=(ratio * height, height), tight_layout=True)
 
 if network == 0:
-    # plt.suptitle('Unfocussed cross-reactivity')
     network_type = 'U'
 if network == 1:
-    # plt.suptitle('Focussed cross-reactivity (Degree)')
     network_type = 'D'
 if network == 2:
-    # plt.suptitle('Focussed cross-reactivity (Attachment)')
     network_type = 'A'
 
 G = nx.Graph()
@@ -558,34 +590,31 @@ for clone_number in range(len(clonotypes)):
         edges.append(('C{}'.format(clone_number + 1), peptide + 1))
 G.add_edges_from(edges)
 
-components = sorted(nx.connected_components(G), key=len, reverse=True)
-C = G.subgraph(components[0])
+nodes = G.nodes()
 
-nodes = C.nodes()
-
-nodes0 = set([n for n in nodes if G.nodes[n]['bipartite'] == 0])
-nodes1 = set([n for n in nodes if G.nodes[n]['bipartite'] == 1])
-nodes2 = set([n for n in nodes if G.nodes[n]['bipartite'] == 2])
+clonotype_nodes = set([n for n in nodes if G.nodes[n]['bipartite'] == 0])
+left_peptides = set([n for n in nodes if G.nodes[n]['bipartite'] == 1])
+right_peptides = set([n for n in nodes if G.nodes[n]['bipartite'] == 2])
 
 pos = dict()
-centering_factor = (max(len(nodes1), len(nodes2)) - len(nodes0)) / 2
+centering_factor = (max(len(left_peptides), len(right_peptides)) - len(clonotype_nodes)) / 2
 
-pos.update((n, (1, i)) for i, n in enumerate(sorted(nodes1)))
-pos.update((n, (3, i)) for i, n in enumerate(sorted(nodes2)))
-pos.update((n, (2, i + centering_factor)) for i, n in enumerate(sorted(nodes0)))
+pos.update((n, (1, i)) for i, n in enumerate(sorted(left_peptides)))
+pos.update((n, (3, i)) for i, n in enumerate(sorted(right_peptides)))
+pos.update((n, (2, i + centering_factor)) for i, n in enumerate(sorted(clonotype_nodes)))
 
 colour = ['yellowgreen', 'rosybrown', 'mediumorchid']
 
 plt.subplot(131)
 
 options = {"node_size": 600}
-nx.draw_networkx_nodes(C, pos=pos, nodelist=sorted(nodes0), node_color=colour, node_shape='o', **options)
-nx.draw_networkx_nodes(C, pos=pos, nodelist=nodes1, node_color='blue', node_shape='D')
-nx.draw_networkx_nodes(C, pos=pos, nodelist=nodes2, node_color='orangered', node_shape='D')
-nx.draw_networkx_edges(C, pos=pos)
+nx.draw_networkx_nodes(G, pos=pos, nodelist=sorted(clonotype_nodes), node_color=colour, node_shape='o', **options)
+nx.draw_networkx_nodes(G, pos=pos, nodelist=left_peptides, node_color='blue', node_shape='D')
+nx.draw_networkx_nodes(G, pos=pos, nodelist=right_peptides, node_color='orangered', node_shape='D')
+nx.draw_networkx_edges(G, pos=pos)
 
 net_labels = {'C1': r'$C_{1}$', 'C2': r'$C_{2}$', 'C3': r'$C_{3}$'}
-nx.draw_networkx_labels(C, pos=pos, labels=net_labels, font_size=18)
+nx.draw_networkx_labels(G, pos=pos, labels=net_labels, font_size=18)
 
 plt.axis('off')
 
@@ -604,12 +633,6 @@ combined_plot.set_xlim(0, 1)
 combined_plot.set_ylim(ymin=0)
 combined_plot.set_xticks(ticks)
 combined_plot.set_xticklabels(labels)
-# if network == 0:
-    combined_plot.set_title('Unfocussed cross-reactivity', fontsize=18)
-if network == 1:
-    combined_plot.set_title('Fixed degree cross-reactivity', fontsize=18)
-if network == 2:
-    combined_plot.set_title('Preferential attachment cross-reactivity', fontsize=18)
 combined_plot.legend(loc='upper right', fontsize='x-large')
 
 for plotted_clone in range(3):
