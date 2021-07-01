@@ -6,27 +6,28 @@ from itertools import chain, combinations
 from random import seed, uniform, sample, getstate, setstate
 
 seed('Building a random recognition network')  # This is here so that we generate the networks consistently
-reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed,bin file is not found a new seed is used and saved to seed.bin
+reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed.bin file is not found a new seed is used and saved to seed.bin
 num_clonotypes = 3  # Number of clonotypes
 num_peptides = 18  # Number of peptides
-network = 0  # 0 = Unfocussed, 1 = Degree, 2 = Preferential attachment
+network = 0  # 0 = Unfocussed, 1 = Fixed degree, 2 = Preferential attachment
 starting_cells = 5  # Starting number of cells for every clonotype
 
 naive_homeostatic_value = 10.0  # \varhpi_{i}
-memory_homeostatic_value = 0.3  # \sigma_{M}
+memory_homeostatic_value = 1.0  # \sigma_{M}
 naive_matrix_value = np.asarray([[4/9, 2/9, 2/9, 1/9],
                                  [4/9, 2/9, 2/9, 1/9],
                                  [4/9, 2/9, 2/9, 1/9]])
 
 naive_death_value = 1.0  # \mu_{N}
-memory_death_value = 0.2  # \mu_{M}
-effector_death_value = 30.0  # \mu_{E}
+memory_death_value = 0.8  # \mu_{M}
+effector_death_value = 20.0  # \mu_{E}
 
 naive_differentiation_constant_value = 1.0  # \alpha_{N}
 memory_differentiation_constant_value = 2.0  # \alpha_{M}
 effector_division_constant_value = 1.0  # \lambda_{E}
 
-effector_differentiation_value = (0.1 * effector_death_value) / 0.9  # \psi_{E}
+effector_differentiation_fraction = 0.1  # \beta
+effector_differentiation_value = (effector_differentiation_fraction / (1 - effector_differentiation_fraction)) * effector_death_value  # \psi_{E}
 peptide_stimulus_value = 1000.0  # \gamma(v)
 
 peptide_degree = 8  # Number of recognised peptides on the focussed degree network
@@ -37,10 +38,11 @@ realisations = 1  # Number of realisations
 effector_division_time = 0.25 / 365  # 6 hour division time for effector cells during infection
 infection_time = 1 / 52  # Infectious period of 1 week
 
-priming_start = 1 / 12
+priming_start = 1 / 12  ## CHECK VALUES WITH JESSICA
 priming_end = priming_start + infection_time
-challenge_start = 7 / 12
+challenge_start = 7 / 12  ## CHECK VALUES WITH JESSICA
 challenge_end = challenge_start + infection_time
+experiment_end = 1  # Maximum time the simulation runs for
 
 
 class Peptide:
@@ -229,7 +231,7 @@ class Clonotype:
                 for peptide_index in subset:
                     if peptide_index not in self.peptides:
                         check_value = uniform(0.0, 1.0)
-                        if check_value < 2 * peptide_list[peptide_index].probability:
+                        if check_value < peptide_list[peptide_index].probability:
                             self.peptides.append(peptide_index)
                             self.recognised += 1
                             peptide_list[peptide_index].add_clonotype(self)
@@ -404,7 +406,10 @@ class Clonotype:
             Differentiation rate from effector to memory.
         """
 
-        return self.effector * (self.effector_differentiation_rate * np.exp(-current_infection))
+        if current_infection == 0:
+            return self.effector * self.effector_differentiation_rate
+        else:
+            return 0
 
     def differentiation_rate_me(self, clonotype_list, peptide_list=None):
         """
@@ -513,6 +518,7 @@ class Clonotype:
             self.effector -= 1
             self.memory += 1
         if starting_compartment == 2:
+            self.memory -= 1
             self.effector += 1
 
 
@@ -565,7 +571,7 @@ def gillespie_step(clone_list, time, division_time, current_infection, time_limi
     division_time : float
         Time for an effector cell to divide.
     current_infection : float
-            Current stimulus rate available from infection.
+        Current stimulus rate available from infection.
     time_limit : float
         Maximum time simulated.
     peptide_list : list[Peptide]
@@ -672,6 +678,7 @@ if reproduce_last_result:
             setstate(seed_value)
     except FileNotFoundError:
         print('Could not find seed.bin. A random realisation will be run instead and the seed will be saved to seed.bin.')
+        reproduce_last_result = False
         seed()
 else:
     seed()
@@ -759,7 +766,7 @@ for current_realisation in range(realisations):
         continue
 
     # Post-infection stage
-    while current_time < 1:
+    while current_time < experiment_end:
         current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, 0)
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
@@ -780,11 +787,11 @@ for current_realisation in range(realisations):
     times.append(deepcopy(realisation_times))
 
 with open('Data.bin', 'wb') as file:
-    data = (states, times, priming_start, priming_end, challenge_start, challenge_end, network, initial_clones, peptides, naive, effector, memory)
+    data = (states, times, priming_start, priming_end, challenge_start, challenge_end, experiment_end, network, initial_clones, peptides, naive, effector, memory)
     pickle.dump(data, file)
 
 with open('Parameters.bin', 'wb') as file:
-    data = ('num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time', num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time)
+    data = ('num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time, experiment_end', num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time, experiment_end)
     pickle.dump(data, file)
 
 if not reproduce_last_result:

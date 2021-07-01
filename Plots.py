@@ -526,12 +526,13 @@ with open('Data.bin', 'rb') as file:
     priming_end = data[3]
     challenge_start = data[4]
     challenge_end = data[5]
-    network = data[6]
-    clonotypes = data[7]
-    peptides = data[8]
-    naive = data[9]
-    effector = data[10]
-    memory = data[11]
+    experiment_end = data[6]
+    network = data[7]
+    clonotypes = data[8]
+    peptides = data[9]
+    naive = data[10]
+    effector = data[11]
+    memory = data[12]
         
     del data
     
@@ -541,8 +542,8 @@ clones_naive = [[], [], [], [], []]
 clones_effector = [[], [], [], [], []]
 clones_memory = [[], [], [], [], []]
 
-ticks = np.arange(0, 1, 1/12) + 1/12
-labels = np.arange(0, 12, 1) + 1
+ticks = np.arange(0, experiment_end, 1/12) + 1/12
+labels = np.arange(0, len(ticks), 1) + 1
 
 for t in times[0]:
     time.append(t)
@@ -603,7 +604,7 @@ pos.update((n, (1, i)) for i, n in enumerate(sorted(left_peptides)))
 pos.update((n, (3, i)) for i, n in enumerate(sorted(right_peptides)))
 pos.update((n, (2, i + centering_factor)) for i, n in enumerate(sorted(clonotype_nodes)))
 
-colour = ['yellowgreen', 'rosybrown', 'mediumorchid']
+colour = ['yellowgreen', 'lightseagreen', 'mediumorchid']
 
 plt.subplot(131)
 
@@ -629,7 +630,7 @@ combined_plot.axvspan(challenge_start, challenge_end, alpha=0.15, color='black')
 
 combined_plot.set_ylabel('Number of cells', fontsize=14)
 combined_plot.set_xlabel('Time [Months]', fontsize=14)
-combined_plot.set_xlim(0, 1)
+combined_plot.set_xlim(0, experiment_end)
 combined_plot.set_ylim(ymin=0)
 combined_plot.set_xticks(ticks)
 combined_plot.set_xticklabels(labels)
@@ -641,7 +642,7 @@ for plotted_clone in range(3):
     step(time, [n for n in clones_naive[plotted_clone]], '-', label='$C_{}$ naive'.format(plotted_clone + 1), where='post', color=colour[plotted_clone])
     naive_plot.axvspan(priming_start, priming_end, alpha=0.15, color='black')
     naive_plot.axvspan(challenge_start, challenge_end, alpha=0.15, color='black')
-    naive_plot.set_xlim(0, 1)
+    naive_plot.set_xlim(0, experiment_end)
     naive_plot.set_ylim(ymin=0)
     naive_plot.set_xticks(ticks)
     plt.setp(naive_plot.get_xticklabels(), visible=False)
@@ -651,7 +652,7 @@ for plotted_clone in range(3):
     step(time, [n for n in clones_effector[plotted_clone]], '-', label='$C_{}$ effector'.format(plotted_clone + 1), where='post', color=colour[plotted_clone])
     effector_plot.axvspan(priming_start, priming_end, alpha=0.15, color='black')
     effector_plot.axvspan(challenge_start, challenge_end, alpha=0.15, color='black')
-    effector_plot.set_xlim(0, 1)
+    effector_plot.set_xlim(0, experiment_end)
     effector_plot.set_ylim(ymin=0)
     effector_plot.set_xticks(ticks)
     plt.setp(effector_plot.get_xticklabels(), visible=False)
@@ -661,7 +662,7 @@ for plotted_clone in range(3):
     step(time, [n for n in clones_memory[plotted_clone]], '-', label='$C_{}$ memory'.format(plotted_clone + 1), where='post', color=colour[plotted_clone])
     memory_plot.axvspan(priming_start, priming_end, alpha=0.15, color='black')
     memory_plot.axvspan(challenge_start, challenge_end, alpha=0.15, color='black')
-    memory_plot.set_xlim(0, 1)
+    memory_plot.set_xlim(0, experiment_end)
     memory_plot.set_ylim(ymin=0)
     memory_plot.set_xticks(ticks)
     memory_plot.set_xticklabels(labels)
