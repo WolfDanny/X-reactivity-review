@@ -12,6 +12,7 @@
 .LSOverride
 
 *.bin
+!seed.bin
 *.zip
 *.pdf
 *.tex
