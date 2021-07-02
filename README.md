@@ -9,7 +9,7 @@ This repository contains:
 
 ## Creating the Anaconda environment
 
-To create and activate the Anaconda environment run the following commands from the current directory:
+To create and activate the Anaconda environment used run the following commands from the current directory:
 ```bash
 conda env create -f environment.yml
 conda activate cross-reactivity
