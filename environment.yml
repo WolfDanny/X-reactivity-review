@@ -1,0 +1,8 @@
+name: cross-reactivity
+channels:
+  - defaults
+dependencies:
+  - numpy=1.19.2
+  - networkx=2.5.0
+  - matplotlib=3.3.2
+  - python=3.7.9

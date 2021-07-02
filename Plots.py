@@ -1,10 +1,16 @@
-from pylab import savefig,step
+# %% Packages
+
+
+from pylab import savefig, step
 import matplotlib.pyplot as plt
 import networkx as nx
 import pickle
 from itertools import chain, combinations
 from random import uniform, sample
 import numpy as np
+
+# %% Definitions
+
 
 plt.rcParams.update({"text.usetex": True})
 plt.rcParams['font.family'] = 'serif'
@@ -148,7 +154,7 @@ class Clonotype:
 
     def stimulated_cells(self):
         """
-        Returns the total number of cells that can receive stimulus from peptides, that is it excludes effector cells that are already dividing.
+        Returns the total number of cells that can receive stimulus from peptides, that is, it excludes effector cells that are already dividing.
 
         Returns
         -------
@@ -196,7 +202,7 @@ class Clonotype:
                 for peptide_index in subset:
                     if peptide_index not in self.peptides:
                         check_value = uniform(0.0, 1.0)
-                        if check_value < 2 * peptide_list[peptide_index].probability:
+                        if check_value < peptide_list[peptide_index].probability:
                             self.peptides.append(peptide_index)
                             self.recognised += 1
                             peptide_list[peptide_index].add_clonotype(self)
@@ -223,7 +229,7 @@ class Clonotype:
 
     def birth_rate_naive(self, clonotype_list):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which a naive cell divides.
 
         Parameters
         ----------
@@ -250,7 +256,7 @@ class Clonotype:
 
     def birth_rate_memory(self):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which a memory cell divides.
 
         Returns
         -------
@@ -262,7 +268,7 @@ class Clonotype:
 
     def birth_rate_effector(self, clonotype_list, peptide_list=None):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which an effector cell divides.
 
         Parameters
         ----------
@@ -371,7 +377,10 @@ class Clonotype:
             Differentiation rate from effector to memory.
         """
 
-        return self.effector * (self.effector_differentiation_rate * np.exp(-current_infection))
+        if current_infection == 0:
+            return self.effector * self.effector_differentiation_rate
+        else:
+            return 0
 
     def differentiation_rate_me(self, clonotype_list, peptide_list=None):
         """
@@ -426,7 +435,7 @@ class Clonotype:
 
     def effector_division(self):
         """
-        Updates the population when an effector cells completes its division cycle and returns the time when this event happens.
+        Updates the population when an effector cell completes its division cycle and returns the time when this event happens.
 
         Returns
         -------
@@ -443,6 +452,12 @@ class Clonotype:
     def death(self, compartment):
         """
         Updates the population when a death event occurs.
+
+        The parameter *compartment* represents the compartment of the cell, where
+
+        - 0 means the cell is in the naive compartment,
+        - 1 means the cell is in the effector compartment,
+        - 2 means the cell is in the memory compartment.
 
         Parameters
         ----------
@@ -480,6 +495,7 @@ class Clonotype:
             self.effector -= 1
             self.memory += 1
         if starting_compartment == 2:
+            self.memory -= 1
             self.effector += 1
 
 
@@ -516,6 +532,8 @@ def clone_sets(dimension, clone):
 
     return sets
 
+# %% Loading results
+
 
 with open('Data.bin', 'rb') as file:
     data = pickle.load(file)
@@ -535,7 +553,10 @@ with open('Data.bin', 'rb') as file:
     memory = data[12]
         
     del data
-    
+
+# %% Generating plots
+
+
 time = []
 clones = [[], [], [], [], []]
 clones_naive = [[], [], [], [], []]

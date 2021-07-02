@@ -1,3 +1,6 @@
+# %% Packages
+
+
 import math
 import pickle
 import numpy as np
@@ -5,18 +8,30 @@ from copy import deepcopy
 from itertools import chain, combinations
 from random import seed, uniform, sample, getstate, setstate
 
-seed('Building a random recognition network')  # This is here so that we generate the networks consistently
+# %% Parameters
+
+
+seed('Building a random recognition network')  # Seed to generate the networks
 reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed.bin file is not found a new seed is used and saved to seed.bin
-num_clonotypes = 3  # Number of clonotypes
-num_peptides = 18  # Number of peptides
+
 network = 0  # 0 = Unfocussed, 1 = Fixed degree, 2 = Preferential attachment
+num_clonotypes = 3  # Number of clonotypes
 starting_cells = 5  # Starting number of cells for every clonotype
+num_peptides = 18  # Number of peptides
+
+peptide_degree = 8  # Number of recognised peptides on the focussed degree network
+peptide_probability = None  # Probability that a peptide will be recognised by a clonotype. If None the probability is calculated as peptide_degree / num_peptides
+
+infection_duration = 1  # Duration of the infectious window [weeks]
+first_infection_start = 1  # Time at which the first infection starts [months]
+second_infection_start = 7  # Time at which the second infection starts [months]
+total_duration = 12  # Total duration of the simulation [months]
 
 naive_homeostatic_value = 10.0  # \varhpi_{i}
 memory_homeostatic_value = 1.0  # \sigma_{M}
-naive_matrix_value = np.asarray([[4/9, 2/9, 2/9, 1/9],
-                                 [4/9, 2/9, 2/9, 1/9],
-                                 [4/9, 2/9, 2/9, 1/9]])
+naive_matrix_value = np.asarray([[4/9, 2/9, 2/9, 1/9],  # p_{1}, p_{12}, p_{13}, p_{123}
+                                 [4/9, 2/9, 2/9, 1/9],  # p_{2}, p_{21}, p_{23}, p_{213}
+                                 [4/9, 2/9, 2/9, 1/9]])  # p_{3}, p_{31}, p_{32}, p_{312}
 
 naive_death_value = 1.0  # \mu_{N}
 memory_death_value = 0.8  # \mu_{M}
@@ -27,22 +42,11 @@ memory_differentiation_constant_value = 2.0  # \alpha_{M}
 effector_division_constant_value = 1.0  # \lambda_{E}
 
 effector_differentiation_fraction = 0.1  # \beta
-effector_differentiation_value = (effector_differentiation_fraction / (1 - effector_differentiation_fraction)) * effector_death_value  # \psi_{E}
 peptide_stimulus_value = 1000.0  # \gamma(v)
-
-peptide_degree = 8  # Number of recognised peptides on the focussed degree network
-peptide_prob_value = peptide_degree / num_peptides  # Probability that a peptide will be recognised by a clonotype (not used in degree networks)
 
 realisations = 1  # Number of realisations
 
-effector_division_time = 0.25 / 365  # 6 hour division time for effector cells during infection
-infection_time = 1 / 52  # Infectious period of 1 week
-
-priming_start = 1 / 12  ## CHECK VALUES WITH JESSICA
-priming_end = priming_start + infection_time
-challenge_start = 7 / 12  ## CHECK VALUES WITH JESSICA
-challenge_end = challenge_start + infection_time
-experiment_end = 1  # Maximum time the simulation runs for
+# %% Definitions
 
 
 class Peptide:
@@ -183,7 +187,7 @@ class Clonotype:
 
     def stimulated_cells(self):
         """
-        Returns the total number of cells that can receive stimulus from peptides, that is it excludes effector cells that are already dividing.
+        Returns the total number of cells that can receive stimulus from peptides, that is, it excludes effector cells that are already dividing.
 
         Returns
         -------
@@ -258,7 +262,7 @@ class Clonotype:
 
     def birth_rate_naive(self, clonotype_list):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which a naive cell divides.
 
         Parameters
         ----------
@@ -285,7 +289,7 @@ class Clonotype:
 
     def birth_rate_memory(self):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which a memory cell divides.
 
         Returns
         -------
@@ -297,7 +301,7 @@ class Clonotype:
 
     def birth_rate_effector(self, clonotype_list, peptide_list=None):
         """
-        Calculates the rate at which a new cell of the clonotype is born.
+        Calculates the rate at which an effector cell divides.
 
         Parameters
         ----------
@@ -464,7 +468,7 @@ class Clonotype:
 
     def effector_division(self):
         """
-        Updates the population when an effector cells completes its division cycle and returns the time when this event happens.
+        Updates the population when an effector cell completes its division cycle and returns the time when this event happens.
 
         Returns
         -------
@@ -481,6 +485,12 @@ class Clonotype:
     def death(self, compartment):
         """
         Updates the population when a death event occurs.
+
+        The parameter *compartment* represents the compartment of the cell, where
+
+        - 0 means the cell is in the naive compartment,
+        - 1 means the cell is in the effector compartment,
+        - 2 means the cell is in the memory compartment.
 
         Parameters
         ----------
@@ -653,6 +663,24 @@ def gillespie_step(clone_list, time, division_time, current_infection, time_limi
     return clone_list, time
 
 
+if peptide_probability is None:
+    peptide_prob_value = peptide_degree / num_peptides
+else:
+    peptide_prob_value = float(peptide_probability)
+
+effector_division_time = 0.25 / 365  # 6 hour division time for effector cells during infection
+
+effector_differentiation_value = (effector_differentiation_fraction / (1 - effector_differentiation_fraction)) * effector_death_value  # \psi_{E}
+infection_time = infection_duration / 52
+priming_start = first_infection_start / 12
+priming_end = priming_start + infection_time
+challenge_start = second_infection_start / 12
+challenge_end = challenge_start + infection_time
+experiment_end = total_duration / 12
+
+# %% Gillespie algorithm
+
+
 peptides = [Peptide(peptide_prob_value, i, peptide_stimulus_value) for i in range(num_peptides)]
 initial_clones = []
 
@@ -718,6 +746,11 @@ for current_realisation in range(realisations):
         if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
             break
     if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
+        states.append(deepcopy(realisation_states))
+        naive.append(deepcopy(realisation_naive))
+        effector.append(deepcopy(realisation_effector))
+        memory.append(deepcopy(realisation_memory))
+        times.append(deepcopy(realisation_times))
         continue
 
     # Priming stage
@@ -733,6 +766,11 @@ for current_realisation in range(realisations):
         if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
             break
     if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
+        states.append(deepcopy(realisation_states))
+        naive.append(deepcopy(realisation_naive))
+        effector.append(deepcopy(realisation_effector))
+        memory.append(deepcopy(realisation_memory))
+        times.append(deepcopy(realisation_times))
         continue
 
     # Memory stage
@@ -748,6 +786,11 @@ for current_realisation in range(realisations):
         if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
             break
     if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
+        states.append(deepcopy(realisation_states))
+        naive.append(deepcopy(realisation_naive))
+        effector.append(deepcopy(realisation_effector))
+        memory.append(deepcopy(realisation_memory))
+        times.append(deepcopy(realisation_times))
         continue
 
     # Challenge stage
@@ -763,6 +806,11 @@ for current_realisation in range(realisations):
         if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
             break
     if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
+        states.append(deepcopy(realisation_states))
+        naive.append(deepcopy(realisation_naive))
+        effector.append(deepcopy(realisation_effector))
+        memory.append(deepcopy(realisation_memory))
+        times.append(deepcopy(realisation_times))
         continue
 
     # Post-infection stage
@@ -777,14 +825,15 @@ for current_realisation in range(realisations):
 
         if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
             break
-    if [clone.cells() for clone in current_clones] == [0 for _ in current_clones]:
-        continue
 
     states.append(deepcopy(realisation_states))
     naive.append(deepcopy(realisation_naive))
     effector.append(deepcopy(realisation_effector))
     memory.append(deepcopy(realisation_memory))
     times.append(deepcopy(realisation_times))
+
+# %% Storing results
+
 
 with open('Data.bin', 'wb') as file:
     data = (states, times, priming_start, priming_end, challenge_start, challenge_end, experiment_end, network, initial_clones, peptides, naive, effector, memory)
