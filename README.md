@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/369218091.svg)](https://zenodo.org/badge/latestdoi/369218091)
 # Generating recognition networks and simulating heterologous infection
 
 This repository contains:
