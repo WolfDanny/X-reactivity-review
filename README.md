@@ -18,5 +18,5 @@ conda activate cross-reactivity
 ## Using the python codes
 
 * To reproduce the published figures run `Recognition-network-gillespie.py` followed by `Plots.py` for each of the values of the `network` parameter (`0, 1, 2`).
-* To run a new simulation set the parameter `reproduce_last_result` to `False`.
+* To run a new simulation set the parameter `reproduce_last_result` to `False` (note that this will overwrite the current `seed.bin` file).
 * To change the probability of peptide recognition change the parameter `peptide_probability` from `None` to the desired value.
