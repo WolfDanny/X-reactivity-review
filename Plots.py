@@ -93,7 +93,7 @@ else:
     network_name = "Error"
 
 G = nx.Graph()
-G.add_nodes_from(["C{}".format(i + 1) for i in range(3)], bipartite=0)
+G.add_nodes_from([f"C{i + 1}" for i in range(3)], bipartite=0)
 
 G.add_nodes_from([i + 1 for i in range(9)], bipartite=1)
 G.add_nodes_from([i + 1 for i in range(9, 18)], bipartite=2)
@@ -101,7 +101,7 @@ G.add_nodes_from([i + 1 for i in range(9, 18)], bipartite=2)
 edges = []
 for clone_number in range(len(clonotypes)):
     for vdp in clonotypes[clone_number].peptides:
-        edges.append(("C{}".format(clone_number + 1), vdp + 1))
+        edges.append((f"C{clone_number + 1}", vdp + 1))
 G.add_edges_from(edges)
 
 nodes = G.nodes()
@@ -135,7 +135,7 @@ nx.draw_networkx_nodes(
     nodelist=sorted(clonotype_nodes),
     node_color=colour,
     node_shape="o",
-    **options
+    **options,
 )
 nx.draw_networkx_nodes(
     G, pos=pos, nodelist=left_peptides, node_color="blue", node_shape="D"
@@ -180,7 +180,7 @@ for plotted_clone in range(3):
         times,
         [n for n in clones_naive[plotted_clone]],
         "-",
-        label="$C_{}$ naive".format(plotted_clone + 1),
+        label=f"$C_{{{plotted_clone + 1}}}$ naive",
         where="post",
         color=colour[plotted_clone],
     )
@@ -191,7 +191,7 @@ for plotted_clone in range(3):
     naive_plot.set_xticks(ticks)
     plt.setp(naive_plot.get_xticklabels(), visible=False)
     naive_plot.set_title(
-        "$C_{}$ naive cells".format(plotted_clone + 1), fontsize=title_size
+        f"$C_{{{plotted_clone + 1}}}$ naive cells", fontsize=title_size
     )
 
     effector_plot = plt.subplot(336, sharex=naive_plot)
@@ -199,7 +199,7 @@ for plotted_clone in range(3):
         times,
         [n for n in clones_effector[plotted_clone]],
         "-",
-        label="$C_{}$ effector".format(plotted_clone + 1),
+        label=f"$C_{{{plotted_clone + 1}}}$ effector",
         where="post",
         color=colour[plotted_clone],
     )
@@ -210,7 +210,7 @@ for plotted_clone in range(3):
     effector_plot.set_xticks(ticks)
     plt.setp(effector_plot.get_xticklabels(), visible=False)
     effector_plot.set_title(
-        "$C_{}$ effector cells".format(plotted_clone + 1), fontsize=title_size
+        f"$C_{{{plotted_clone + 1}}}$ effector cells", fontsize=title_size
     )
 
     memory_plot = plt.subplot(339, sharex=naive_plot)
@@ -218,7 +218,7 @@ for plotted_clone in range(3):
         times,
         [n for n in clones_memory[plotted_clone]],
         "-",
-        label="$C_{}$ memory".format(plotted_clone + 1),
+        label=f"$C_{{{plotted_clone + 1}}}$ memory",
         where="post",
         color=colour[plotted_clone],
     )
@@ -229,11 +229,11 @@ for plotted_clone in range(3):
     memory_plot.set_xticks(ticks)
     memory_plot.set_xticklabels(labels)
     memory_plot.set_title(
-        "$C_{}$ memory cells".format(plotted_clone + 1), fontsize=title_size
+        f"$C_{{{plotted_clone + 1}}}$ memory cells", fontsize=title_size
     )
     memory_plot.set_xlabel("$t$ / months", fontsize=label_size)
 
-    savefig("Graph-{0}-C{1}.pdf".format(network_name, plotted_clone + 1))
+    savefig(f"Graph-{network_name}-C{plotted_clone + 1}.pdf")
     naive_plot.clear()
     effector_plot.clear()
     memory_plot.clear()
