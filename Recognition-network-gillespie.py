@@ -9,7 +9,7 @@ import pickle
 # %% Parameters
 
 
-seed('Building a random recognition network')  # Seed to generate the networks
+seed("Building a random recognition network")  # Seed to generate the networks
 reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed.bin file is not found a new seed is used and saved to seed.bin
 
 network = 0  # 0 = Unfocussed, 1 = Fixed degree, 2 = Preferential attachment
@@ -27,9 +27,13 @@ total_duration = 12  # Total duration of the simulation [months]
 
 naive_homeostatic_value = 10.0  # \varphi_{i}
 memory_homeostatic_value = 1.0  # \sigma_{M}
-naive_matrix_value = np.asarray([[4/9, 2/9, 2/9, 1/9],  # p_{1}, p_{12}, p_{13}, p_{123}
-                                 [4/9, 2/9, 2/9, 1/9],  # p_{2}, p_{21}, p_{23}, p_{213}
-                                 [4/9, 2/9, 2/9, 1/9]])  # p_{3}, p_{31}, p_{32}, p_{312}
+naive_matrix_value = np.asarray(
+    [
+        [4 / 9, 2 / 9, 2 / 9, 1 / 9],  # p_{1}, p_{12}, p_{13}, p_{123}
+        [4 / 9, 2 / 9, 2 / 9, 1 / 9],  # p_{2}, p_{21}, p_{23}, p_{213}
+        [4 / 9, 2 / 9, 2 / 9, 1 / 9],  # p_{3}, p_{31}, p_{32}, p_{312}
+    ]
+)
 
 naive_death_value = 1.0  # \mu_{N}
 memory_death_value = 0.8  # \mu_{M}
@@ -52,9 +56,13 @@ if peptide_probability is None:
 else:
     peptide_prob_value = float(peptide_probability)
 
-effector_division_time = 0.25 / 365  # 6 hour division time for effector cells during infection
+effector_division_time = (
+    0.25 / 365
+)  # 6 hour division time for effector cells during infection
 
-effector_differentiation_value = (effector_differentiation_fraction / (1 - effector_differentiation_fraction)) * effector_death_value  # \psi_{E}
+effector_differentiation_value = (
+    effector_differentiation_fraction / (1 - effector_differentiation_fraction)
+) * effector_death_value  # \psi_{E}
 infection_time = infection_duration / 52
 priming_start = first_infection_start / 12
 priming_end = priming_start + infection_time
@@ -65,11 +73,28 @@ experiment_end = total_duration / 12
 # %% Gillespie algorithm
 
 
-peptides = [Peptide(peptide_prob_value, i, peptide_stimulus_value) for i in range(num_peptides)]
+peptides = [
+    Peptide(peptide_prob_value, i, peptide_stimulus_value) for i in range(num_peptides)
+]
 initial_clones = []
 
 for clone_index in range(num_clonotypes):
-    initial_clones.append(Clonotype(clone_index, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, effector_division_constant_value, naive_differentiation_constant_value, memory_differentiation_constant_value, naive_death_value, effector_death_value, memory_death_value, effector_differentiation_value))
+    initial_clones.append(
+        Clonotype(
+            clone_index,
+            starting_cells,
+            naive_homeostatic_value,
+            naive_matrix_value,
+            memory_homeostatic_value,
+            effector_division_constant_value,
+            naive_differentiation_constant_value,
+            memory_differentiation_constant_value,
+            naive_death_value,
+            effector_death_value,
+            memory_death_value,
+            effector_differentiation_value,
+        )
+    )
 
     # Unfocussed network
     if network == 0:
@@ -85,11 +110,13 @@ for clone_index in range(num_clonotypes):
 
 if reproduce_last_result:
     try:
-        with open('seed.bin', 'rb') as file:
+        with open("seed.bin", "rb") as file:
             seed_value = pickle.load(file)
             setstate(seed_value)
     except FileNotFoundError:
-        print('Could not find seed.bin. A random realisation will be run instead and the seed will be saved to seed.bin.')
+        print(
+            "Could not find seed.bin. A random realisation will be run instead and the seed will be saved to seed.bin."
+        )
         reproduce_last_result = False
         seed()
 else:
@@ -109,7 +136,9 @@ for current_realisation in range(realisations):
 
     realisation_states = [deepcopy([clone.cells() for clone in current_clones])]
     realisation_naive = [deepcopy([clone.naive for clone in current_clones])]
-    realisation_effector = [deepcopy([clone.effector + clone.effector_dividing for clone in current_clones])]
+    realisation_effector = [
+        deepcopy([clone.effector + clone.effector_dividing for clone in current_clones])
+    ]
     realisation_memory = [deepcopy([clone.memory for clone in current_clones])]
     realisation_times = [0.0]
 
@@ -119,11 +148,17 @@ for current_realisation in range(realisations):
 
     # Pre-infection stage
     while current_time != priming_start:
-        current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, 0, priming_start)
+        current_clones, current_time = gillespie_step(
+            current_clones, current_time, effector_division_time, 0, priming_start
+        )
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
         realisation_naive.append(deepcopy([clone.naive for clone in current_clones]))
-        realisation_effector.append(deepcopy([clone.effector + clone.effector_dividing for clone in current_clones]))
+        realisation_effector.append(
+            deepcopy(
+                [clone.effector + clone.effector_dividing for clone in current_clones]
+            )
+        )
         realisation_memory.append(deepcopy([clone.memory for clone in current_clones]))
         realisation_times.append(deepcopy(current_time))
 
@@ -139,11 +174,22 @@ for current_realisation in range(realisations):
 
     # Priming stage
     while current_time != priming_end:
-        current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, peptide_stimulus_value, priming_end, peptides[:int(len(peptides) / 2)])
+        current_clones, current_time = gillespie_step(
+            current_clones,
+            current_time,
+            effector_division_time,
+            peptide_stimulus_value,
+            priming_end,
+            peptides[: int(len(peptides) / 2)],
+        )
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
         realisation_naive.append(deepcopy([clone.naive for clone in current_clones]))
-        realisation_effector.append(deepcopy([clone.effector + clone.effector_dividing for clone in current_clones]))
+        realisation_effector.append(
+            deepcopy(
+                [clone.effector + clone.effector_dividing for clone in current_clones]
+            )
+        )
         realisation_memory.append(deepcopy([clone.memory for clone in current_clones]))
         realisation_times.append(deepcopy(current_time))
 
@@ -159,11 +205,17 @@ for current_realisation in range(realisations):
 
     # Memory stage
     while current_time != challenge_start:
-        current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, 0, challenge_start)
+        current_clones, current_time = gillespie_step(
+            current_clones, current_time, effector_division_time, 0, challenge_start
+        )
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
         realisation_naive.append(deepcopy([clone.naive for clone in current_clones]))
-        realisation_effector.append(deepcopy([clone.effector + clone.effector_dividing for clone in current_clones]))
+        realisation_effector.append(
+            deepcopy(
+                [clone.effector + clone.effector_dividing for clone in current_clones]
+            )
+        )
         realisation_memory.append(deepcopy([clone.memory for clone in current_clones]))
         realisation_times.append(deepcopy(current_time))
 
@@ -179,11 +231,22 @@ for current_realisation in range(realisations):
 
     # Challenge stage
     while current_time != challenge_end:
-        current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, peptide_stimulus_value, challenge_end, peptides[int(len(peptides) / 2):])
+        current_clones, current_time = gillespie_step(
+            current_clones,
+            current_time,
+            effector_division_time,
+            peptide_stimulus_value,
+            challenge_end,
+            peptides[int(len(peptides) / 2) :],
+        )
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
         realisation_naive.append(deepcopy([clone.naive for clone in current_clones]))
-        realisation_effector.append(deepcopy([clone.effector + clone.effector_dividing for clone in current_clones]))
+        realisation_effector.append(
+            deepcopy(
+                [clone.effector + clone.effector_dividing for clone in current_clones]
+            )
+        )
         realisation_memory.append(deepcopy([clone.memory for clone in current_clones]))
         realisation_times.append(deepcopy(current_time))
 
@@ -199,11 +262,17 @@ for current_realisation in range(realisations):
 
     # Post-infection stage
     while current_time < experiment_end:
-        current_clones, current_time = gillespie_step(current_clones, current_time, effector_division_time, 0)
+        current_clones, current_time = gillespie_step(
+            current_clones, current_time, effector_division_time, 0
+        )
 
         realisation_states.append(deepcopy([clone.cells() for clone in current_clones]))
         realisation_naive.append(deepcopy([clone.naive for clone in current_clones]))
-        realisation_effector.append(deepcopy([clone.effector + clone.effector_dividing for clone in current_clones]))
+        realisation_effector.append(
+            deepcopy(
+                [clone.effector + clone.effector_dividing for clone in current_clones]
+            )
+        )
         realisation_memory.append(deepcopy([clone.memory for clone in current_clones]))
         realisation_times.append(deepcopy(current_time))
 
@@ -219,14 +288,48 @@ for current_realisation in range(realisations):
 # %% Storing results
 
 
-with open('Data.bin', 'wb') as file:
-    data = (states, times, priming_start, priming_end, challenge_start, challenge_end, experiment_end, network, initial_clones, peptides, naive, effector, memory)
+with open("Data.bin", "wb") as file:
+    data = (
+        states,
+        times,
+        priming_start,
+        priming_end,
+        challenge_start,
+        challenge_end,
+        experiment_end,
+        network,
+        initial_clones,
+        peptides,
+        naive,
+        effector,
+        memory,
+    )
     pickle.dump(data, file)
 
-with open('Parameters.bin', 'wb') as file:
-    data = ('num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time, experiment_end', num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time, experiment_end)
+with open("Parameters.bin", "wb") as file:
+    data = (
+        "num_clonotypes, num_peptides, starting_cells, naive_homeostatic_value, naive_matrix_value, memory_homeostatic_value, naive_death_value, memory_death_value, effector_death_value, effector_differentiation_value, memory_differentiation_constant_value, peptide_stimulus_value, peptide_degree, peptide_prob_value, realisations, effector_division_time, infection_time, experiment_end",
+        num_clonotypes,
+        num_peptides,
+        starting_cells,
+        naive_homeostatic_value,
+        naive_matrix_value,
+        memory_homeostatic_value,
+        naive_death_value,
+        memory_death_value,
+        effector_death_value,
+        effector_differentiation_value,
+        memory_differentiation_constant_value,
+        peptide_stimulus_value,
+        peptide_degree,
+        peptide_prob_value,
+        realisations,
+        effector_division_time,
+        infection_time,
+        experiment_end,
+    )
     pickle.dump(data, file)
 
 if not reproduce_last_result:
-    with open('seed.bin', 'wb') as file:
+    with open("seed.bin", "wb") as file:
         pickle.dump(seed_value, file)

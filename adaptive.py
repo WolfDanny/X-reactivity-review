@@ -72,7 +72,21 @@ class Peptide:
 class Clonotype:
     """Class to represent clonotypes"""
 
-    def __init__(self, position, num_cells, naive_homeostatic_rate, naive_competition_matrix, memory_homeostatic_rate, effector_division_constant, naive_differentiation_constant, memory_differentiation_constant, naive_death_rate, effector_death_rate, memory_death_rate, effector_differentiation_rate):
+    def __init__(
+        self,
+        position,
+        num_cells,
+        naive_homeostatic_rate,
+        naive_competition_matrix,
+        memory_homeostatic_rate,
+        effector_division_constant,
+        naive_differentiation_constant,
+        memory_differentiation_constant,
+        naive_death_rate,
+        effector_death_rate,
+        memory_death_rate,
+        effector_differentiation_rate,
+    ):
         """
         Parameters
         ----------
@@ -156,7 +170,9 @@ class Clonotype:
 
         return self.naive + self.effector + self.memory
 
-    def add_peptide(self, peptide_list, network_type, degree=None, subset=None, clone_list=None):
+    def add_peptide(
+        self, peptide_list, network_type, degree=None, subset=None, clone_list=None
+    ):
         """
         Checks if peptides in *peptide_list* will be recognised by the clonotype.
 
@@ -215,7 +231,10 @@ class Clonotype:
                 for peptide in self.peptides:
                     for clone in peptide_list[peptide].clonotypes:
                         for peptide_index in clone_list[clone].peptides:
-                            if peptide_index not in self.peptides and peptide_index not in extra_peptides:
+                            if (
+                                peptide_index not in self.peptides
+                                and peptide_index not in extra_peptides
+                            ):
                                 extra_peptides.append(peptide_index)
                 self.add_peptide(peptide_list, 0, subset=extra_peptides)
 
@@ -525,7 +544,14 @@ def clone_sets(dimension, clone):
     return sets
 
 
-def gillespie_step(clone_list, time, division_time, current_infection, time_limit=None, peptide_list=None):
+def gillespie_step(
+    clone_list,
+    time,
+    division_time,
+    current_infection,
+    time_limit=None,
+    peptide_list=None,
+):
     """
     Performs a step of the Gillespie simulation and returns the updated state and time.
 
@@ -559,7 +585,9 @@ def gillespie_step(clone_list, time, division_time, current_infection, time_limi
     for clone in clone_list:
         rate_list = np.append(rate_list, clone.birth_rate_naive(clone_list))
     for clone in clone_list:
-        rate_list = np.append(rate_list, clone.birth_rate_effector(clone_list, peptide_list))
+        rate_list = np.append(
+            rate_list, clone.birth_rate_effector(clone_list, peptide_list)
+        )
     for clone in clone_list:
         rate_list = np.append(rate_list, clone.birth_rate_memory())
 
@@ -573,11 +601,17 @@ def gillespie_step(clone_list, time, division_time, current_infection, time_limi
 
     # Differentiation rates
     for clone in clone_list:
-        rate_list = np.append(rate_list, clone.differentiation_rate_ne(clone_list, peptide_list))
+        rate_list = np.append(
+            rate_list, clone.differentiation_rate_ne(clone_list, peptide_list)
+        )
     for clone in clone_list:
-        rate_list = np.append(rate_list, clone.differentiation_rate_em(current_infection))
+        rate_list = np.append(
+            rate_list, clone.differentiation_rate_em(current_infection)
+        )
     for clone in clone_list:
-        rate_list = np.append(rate_list, clone.differentiation_rate_me(clone_list, peptide_list))
+        rate_list = np.append(
+            rate_list, clone.differentiation_rate_me(clone_list, peptide_list)
+        )
 
     r1 = uniform(0.0, 1.0)
     r2 = uniform(0.0, 1.0)
@@ -606,7 +640,11 @@ def gillespie_step(clone_list, time, division_time, current_infection, time_limi
     clonotype_total = len(clone_list)
 
     for rate in range(rate_list.size):
-        if (sum(rate_list[:rate]) / total_rate) <= r2 < (sum(rate_list[:rate + 1]) / total_rate):
+        if (
+            (sum(rate_list[:rate]) / total_rate)
+            <= r2
+            < (sum(rate_list[: rate + 1]) / total_rate)
+        ):
             event = int(rate / (clonotype_total * 3))
             clone = rate % clonotype_total
             compartment = int(rate / clonotype_total) % 3

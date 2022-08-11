@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/369218091.svg)](https://zenodo.org/badge/latestdoi/369218091)
+[![DOI](https://zenodo.org/badge/369218091.svg)](https://zenodo.org/badge/latestdoi/369218091) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 # Generating recognition networks and simulating heterologous infection
 
 This repository contains:
