@@ -12,7 +12,7 @@ import pickle
 seed("Building a random recognition network")  # Seed to generate the networks
 reproduce_last_result = True  # Reproduces the results from the previous run. If False or the seed.bin file is not found a new seed is used and saved to seed.bin
 
-network = 0  # 0 = Unfocussed, 1 = Fixed degree, 2 = Preferential attachment
+network = 2  # 0 = Unfocussed, 1 = Fixed degree, 2 = Preferential attachment
 num_clonotypes = 3  # Number of clonotypes
 starting_cells = 5  # Starting number of cells for every clonotype
 num_peptides = 18  # Number of peptides
@@ -96,17 +96,9 @@ for clone_index in range(num_clonotypes):
         )
     )
 
-    # Unfocussed network
-    if network == 0:
-        initial_clones[-1].add_peptide(peptides, 0)
-
-    # Focussed network (degree)
-    if network == 1:
-        initial_clones[-1].add_peptide(peptides, 1, degree=peptide_degree)
-
-    # Focussed network (preferential attachment)
-    if network == 2:
-        initial_clones[-1].add_peptide(peptides, 2, clone_list=initial_clones)
+    initial_clones[-1].add_peptide(
+        peptides, network, degree=peptide_degree, clone_list=initial_clones
+    )
 
 if reproduce_last_result:
     try:
