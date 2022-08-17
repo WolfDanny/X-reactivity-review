@@ -166,7 +166,7 @@ naive_max = 6
 memory_max = 13
 
 combined_plot.set_ylabel("Number of cells", fontsize=label_size)
-combined_plot.set_xlabel("$t$ [months]", fontsize=label_size)
+combined_plot.set_xlabel("Time [months]", fontsize=label_size)
 combined_plot.set_xlim(0, experiment_end)
 combined_plot.set_ylim(0, total_max)
 combined_plot.set_xticks(ticks)
@@ -231,7 +231,7 @@ for plotted_clone in range(3):
     memory_plot.set_title(
         f"$C_{{{plotted_clone + 1}}}$ memory cells", fontsize=title_size
     )
-    memory_plot.set_xlabel("$t$ [months]", fontsize=label_size)
+    memory_plot.set_xlabel("Time [months]", fontsize=label_size)
 
     savefig(f"Graph-{network_name}-C{plotted_clone + 1}.pdf")
     naive_plot.clear()
