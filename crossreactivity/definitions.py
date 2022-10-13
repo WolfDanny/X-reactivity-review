@@ -3,6 +3,7 @@
 import math
 import numpy as np
 from itertools import chain, combinations
+from scipy.special import comb
 from random import uniform, sample
 
 # %% Definitions
@@ -658,3 +659,160 @@ def gillespie_step(
             break
 
     return clone_list, time
+
+
+def clustering_coefficient(network, **kwargs):
+    """
+
+    Parameters
+    ----------
+    network : str
+        Type of network (MMRB, ER, C, or PA).
+    kwargs :
+        Network parameters for the different types of networks.
+
+    Returns
+    -------
+    float
+        Clustering coefficient for the specified network and parameters.
+    """
+
+    networks = {
+        "MMSB": _mmsb,
+        "ER": _erdos_renyi,
+        "C": _configuration,
+        "PA": _preferential_attachment,
+    }
+
+    try:
+        networks[network.upper()](**kwargs)
+    except KeyError:
+        return -1
+
+
+def _mmsb(clonotype_probabilities, epitope_probabilities, **kwargs):
+    """
+    Calculates the clustering coefficient of a mixed membership stochastic blockmodel network with ``clonotype_probabilities`` affiliation vectors, and ``epitope_probabilities`` recognition probabilities.
+
+    Parameters
+    ----------
+    clonotype_probabilities : list[list[float]]
+        List of clonotype affiliation vectors.
+    epitope_probabilities : list[float]
+        List of epitope recognition probabilities.
+
+    Returns
+    -------
+    float
+        Clustering coefficient of a mixed membership stochastic blockmodel network.
+    """
+
+    num_clonotypes = len(clonotype_probabilities)
+    num_epitopes = len(epitope_probabilities)
+    value = 0
+    for clone, _ in enumerate(clonotype_probabilities):
+        for vdp_0, vdp_1 in combinations(list(range(num_clonotypes)), 2):
+            value += _local_mmsb(
+                clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilities
+            )
+    return value / (num_clonotypes * comb(num_epitopes, 2))
+
+
+def _local_mmsb(clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilities):
+    """
+    Calculates the local clustering coefficient for ``clone``, ``vdp_0``, and ``vdp_1`` in a mixed membership stochastic blockmodel network.
+
+    Parameters
+    ----------
+    clone : int
+        Index of the clonotype considered.
+    vdp_0 : int
+        Index of the first VDP considered.
+    vdp_1 : int
+        Index of the second VDP considered.
+    clonotype_probabilities : list[list[float]]
+        List of clonotype affiliation vectors.
+    epitope_probabilities : list[float]
+        List of epitope recognition probabilities.
+
+    Returns
+    -------
+    float
+        Local clustering coefficient for clone, vdp_0, and vdp_1.
+    """
+
+    epitope_degrees = []
+    for epitope in epitope_probabilities:
+        value = 0
+        for clonotype in clonotype_probabilities:
+            value += epitope * clonotype
+        epitope_degrees.append(value)
+
+    butterflies = (
+        ((epitope_probabilities[vdp_0] * epitope_probabilities[vdp_1]) ** 2)
+        * clonotype_probabilities[clone][vdp_0]
+        * clonotype_probabilities[clone][vdp_1]
+    )
+    value = 0
+    for index, probability in enumerate(clonotype_probabilities):
+        if index != clone:
+            value += probability[vdp_0] * probability[vdp_1]
+    butterflies *= value
+
+    return butterflies / (
+        epitope_degrees[vdp_0] + epitope_degrees[vdp_1] - 2 - butterflies
+    )
+
+
+def _erdos_renyi(clonotypes, recognition_probability, **kwargs):
+    """
+    Calculates the clustering coefficient of an Erdos-Renyi network with ``clonotypes`` clonotypes, and ``recognition`` probability of VDP recognition.
+
+    Parameters
+    ----------
+    clonotypes : int
+        Number of clonotypes.
+    recognition_probability : float
+        VDP recognition probability.
+
+    Returns
+    -------
+    float
+        Clustering coefficient of an Erdos-Renyi network.
+    """
+
+    return ((recognition_probability**4) * (clonotypes - 1)) / (
+        (2 * recognition_probability * clonotypes)
+        - 2
+        - ((recognition_probability**4) * (clonotypes - 1))
+    )
+
+
+def _configuration(clonotypes, epitope_degrees, **kwargs):
+    """
+    Calculates the clustering coefficient of a configuration model network with ``clonotypes`` clonotypes, and an epitope node degree sequence given by ``epitope_degrees``.
+
+    Parameters
+    ----------
+    clonotypes : int
+        Number of clonotypes.
+    epitope_degrees : list[int]
+        List of epitope node degrees.
+
+    Returns
+    -------
+    float
+        Clustering coefficient of a configuration model network.
+    """
+
+    value = 0
+    for degree_0, degree_1 in combinations(epitope_degrees, 2):
+        value += ((degree_0 * degree_1) ** 2 * (clonotypes - 1)) / (
+            ((degree_0 + degree_1 - 2) * (clonotypes**4))
+            - ((degree_0 * degree_1) ** 2 * (clonotypes - 1))
+        )
+    return value / comb(len(epitope_degrees), 2)
+
+
+def _preferential_attachment(**kwargs):
+    return 0

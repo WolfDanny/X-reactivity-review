@@ -1,10 +1,10 @@
 # %% Packages
 
 
-from adaptive import *
 from copy import deepcopy
 from random import seed, getstate, setstate
 import pickle
+import crossreactivity.definitions as xr
 
 # %% Parameters
 
@@ -74,13 +74,14 @@ experiment_end = total_duration / 12
 
 
 peptides = [
-    Peptide(peptide_prob_value, i, peptide_stimulus_value) for i in range(num_peptides)
+    xr.Peptide(peptide_prob_value, i, peptide_stimulus_value)
+    for i in range(num_peptides)
 ]
 initial_clones = []
 
 for clone_index in range(num_clonotypes):
     initial_clones.append(
-        Clonotype(
+        xr.Clonotype(
             clone_index,
             starting_cells,
             naive_homeostatic_value,
@@ -140,7 +141,7 @@ for current_realisation in range(realisations):
 
     # Pre-infection stage
     while current_time != priming_start:
-        current_clones, current_time = gillespie_step(
+        current_clones, current_time = xr.gillespie_step(
             current_clones, current_time, effector_division_time, 0, priming_start
         )
 
@@ -166,7 +167,7 @@ for current_realisation in range(realisations):
 
     # Priming stage
     while current_time != priming_end:
-        current_clones, current_time = gillespie_step(
+        current_clones, current_time = xr.gillespie_step(
             current_clones,
             current_time,
             effector_division_time,
@@ -197,7 +198,7 @@ for current_realisation in range(realisations):
 
     # Memory stage
     while current_time != challenge_start:
-        current_clones, current_time = gillespie_step(
+        current_clones, current_time = xr.gillespie_step(
             current_clones, current_time, effector_division_time, 0, challenge_start
         )
 
@@ -223,7 +224,7 @@ for current_realisation in range(realisations):
 
     # Challenge stage
     while current_time != challenge_end:
-        current_clones, current_time = gillespie_step(
+        current_clones, current_time = xr.gillespie_step(
             current_clones,
             current_time,
             effector_division_time,
@@ -254,7 +255,7 @@ for current_realisation in range(realisations):
 
     # Post-infection stage
     while current_time < experiment_end:
-        current_clones, current_time = gillespie_step(
+        current_clones, current_time = xr.gillespie_step(
             current_clones, current_time, effector_division_time, 0
         )
 
