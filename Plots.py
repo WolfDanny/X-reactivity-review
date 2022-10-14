@@ -10,6 +10,7 @@ import numpy as np
 
 # %% Definitions
 
+
 if find_executable("latex"):
     plt.rcParams.update({"text.usetex": True})
     label_size = 18
