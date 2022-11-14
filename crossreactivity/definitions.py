@@ -3,7 +3,7 @@
 import math
 import numpy as np
 from typing import Union
-from itertools import chain, combinations
+from itertools import chain, combinations, permutations, cycle
 from scipy.special import comb
 from random import uniform, sample
 
@@ -663,14 +663,65 @@ def gillespie_step(
 
 
 def affiliation_vectors(clonotypes, epitopes, blocks):
+    """
+    Generates a list of affiliation vectors with different permutations of values.
 
+    Parameters
+    ----------
+    clonotypes : int
+        Number of clonotypes.
+    epitopes : int
+        Number of epitopes.
+    blocks : int
+        Number of blocks.
+
+    Returns
+    -------
+    list[list[float]]
+        Affiliation vectors for each clonotype.
+    """
+
+    affiliations = np.linspace(1, 0, blocks)
     vectors = [[] for _ in range(clonotypes)]
-    block_epitopes = np.cumsum([round(epitopes / blocks)] * blocks)
-    block_epitopes[-1] = epitopes
+    block_sizes = [round(epitopes / blocks)] * blocks
+    block_sizes[-1] -= sum(block_sizes) - epitopes
 
-    for block in range(block_epitopes.size - 1):
-        pass
+    for vector, affiliation in zip(vectors, cycle(permutations(affiliations))):
+        for value, size in zip(affiliation, block_sizes):
+            for _ in range(size):
+                vector.append(value)
     return vectors
+
+
+def epitope_recognition_vector(epitopes, blocks, p_min, p_max):
+    """
+    Generates a list of epitope recognition probabilities for an MMSB network.
+
+    Parameters
+    ----------
+    epitopes : int
+        Number of epitopes.
+    blocks : int
+        Number of blocks.
+    p_min : float
+        Minimum probability value.
+    p_max : float
+        Maximum probability value.
+
+    Returns
+    -------
+    list[float]
+        List of recognition probabilities
+    """
+    probabilities = np.linspace(p_max, p_min, blocks)
+    vector = []
+    block_sizes = [round(epitopes / blocks)] * blocks
+    block_sizes[-1] -= sum(block_sizes) - epitopes
+
+    for value, size in zip(probabilities, block_sizes):
+        for _ in range(size):
+            vector.append(value)
+    return vector
 
 
 def clustering_coefficient(network, **kwargs):
@@ -725,7 +776,7 @@ def _mmsb(clonotype_probabilities, epitope_probabilities, **kwargs):
 
     value = 0
     for clone, _ in enumerate(clonotype_probabilities):
-        for vdp_0, vdp_1 in combinations(list(range(num_clonotypes)), 2):
+        for vdp_0, vdp_1 in combinations(list(range(num_epitopes)), 2):
             value += _local_mmsb(
                 clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilities
             )
@@ -754,13 +805,12 @@ def _local_mmsb(clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilit
     float
         Local clustering coefficient for clone, vdp_0, and vdp_1.
     """
-
-    epitope_degree_list = []
-    for index, epitope in enumerate(epitope_probabilities):
+    epitope_degrees = []
+    for index in [vdp_0, vdp_1]:
         value = 0
         for clonotype in clonotype_probabilities:
-            value += epitope * clonotype[index]
-        epitope_degree_list.append(value)
+            value += epitope_probabilities[index] * clonotype[index]
+        epitope_degrees.append(value)
 
     butterflies = (
         ((epitope_probabilities[vdp_0] * epitope_probabilities[vdp_1]) ** 2)
@@ -773,9 +823,7 @@ def _local_mmsb(clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilit
             value += probability[vdp_0] * probability[vdp_1]
     butterflies *= value
 
-    return butterflies / (
-        epitope_degree_list[vdp_0] + epitope_degree_list[vdp_1] - 2 - butterflies
-    )
+    return butterflies / (sum(epitope_degrees) - 2 - butterflies)
 
 
 def _erdos_renyi(recognition_probability, clonotypes, **kwargs):
