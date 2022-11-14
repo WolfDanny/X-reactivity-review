@@ -698,14 +698,14 @@ def clustering_coefficient(network, **kwargs):
     }
 
     try:
-        networks[network.upper()](**kwargs)
+        return networks[network.upper()](**kwargs)
     except KeyError:
         return -1
 
 
 def _mmsb(clonotype_probabilities, epitope_probabilities, **kwargs):
     """
-    Calculates the clustering coefficient of a mixed membership stochastic blockmodel network with ``clonotype_probabilities`` affiliation vectors and ``epitope_probabilities`` recognition probabilities.
+    Calculates the clustering coefficient of a mixed membership stochastic blockmodel network.
 
     Parameters
     ----------
@@ -778,16 +778,16 @@ def _local_mmsb(clone, vdp_0, vdp_1, clonotype_probabilities, epitope_probabilit
     )
 
 
-def _erdos_renyi(clonotypes, recognition_probability, **kwargs):
+def _erdos_renyi(recognition_probability, clonotypes, **kwargs):
     """
-    Calculates the clustering coefficient of an Erdos-Renyi network with ``clonotypes`` clonotypes, and ``recognition`` probability of VDP recognition.
+    Calculates the clustering coefficient of an Erdos-Renyi network.
 
     Parameters
     ----------
-    clonotypes : int
-        Number of clonotypes.
     recognition_probability : float
         VDP recognition probability.
+    clonotypes : int
+        Number of clonotypes.
 
     Returns
     -------
@@ -802,13 +802,13 @@ def _erdos_renyi(clonotypes, recognition_probability, **kwargs):
     )
 
 
-def _epitope_degrees(probability, clonotypes, epitopes):
+def _epitope_degrees(recognition_probability, clonotypes, epitopes):
     """
     Generates a constant list of epitope node degrees such that p_{v} is approximately ``probability``.
 
     Parameters
     ----------
-    probability : float
+    recognition_probability : float
         Epitope recognition probability.
     clonotypes : int
         Number of clonotypes.
@@ -820,16 +820,16 @@ def _epitope_degrees(probability, clonotypes, epitopes):
     list[int]
         List of degrees of epitope nodes.
     """
-    return [round(probability * clonotypes)] * epitopes
+    return [round(recognition_probability * clonotypes)] * epitopes
 
 
-def _configuration(probability, clonotypes, epitopes, **kwargs):
+def _configuration(recognition_probability, clonotypes, epitopes, **kwargs):
     """
-    Calculates the clustering coefficient of a configuration model network with ``clonotypes`` clonotypes, and an epitope node degree sequence given by ``epitope_degrees``.
+    Calculates the clustering coefficient of a configuration model network.
 
     Parameters
     ----------
-    probability : float
+    recognition_probability : float
         Epitope recognition probability.
     clonotypes : int
         Number of clonotypes.
@@ -843,9 +843,13 @@ def _configuration(probability, clonotypes, epitopes, **kwargs):
     """
 
     if isinstance(epitopes, int):
-        epitope_degrees = _epitope_degrees(probability, clonotypes, epitopes)
-    else:
+        epitope_degrees = _epitope_degrees(
+            recognition_probability, clonotypes, epitopes
+        )
+    elif all([isinstance(current, int) for current in epitopes]):
         epitope_degrees = epitopes
+    else:
+        return -1
 
     value = 0
     for degree_0, degree_1 in combinations(epitope_degrees, 2):
@@ -856,21 +860,155 @@ def _configuration(probability, clonotypes, epitopes, **kwargs):
     return value / comb(epitopes, 2)
 
 
-def _preferential_attachment(**kwargs):
-    return 0
+def _preferential_attachment(
+    recognition_probability, clonotypes, epitopes, crossreactivity, **kwargs
+):
+    """
+    Calculates the clustering coefficient for a preferential attachment network.
+
+    Parameters
+    ----------
+    recognition_probability : float
+        Base epitope recognition probability.
+    clonotypes : int
+        Number of clonotypes in the network.
+    epitopes : int
+        Number of epitopes in the network.
+    crossreactivity : float
+        Base cross-reactivity probability.
+
+    Returns
+    -------
+    float
+        Clustering coefficient for a preferential attachment network.
+    """
+    clustering = 0
+    degree = _preferential_degree(
+        recognition_probability, clonotypes, epitopes, crossreactivity
+    )
+    probabilities, _ = _preferential_probabilities(
+        recognition_probability, clonotypes, epitopes, crossreactivity
+    )
+    for current_clone in range(clonotypes):
+        butterflies = 0
+        for clone in [i for i in range(clonotypes) if i != current_clone]:
+            butterflies += probabilities[clone] ** 2
+        butterflies *= probabilities[current_clone] ** 2
+        clustering += butterflies / ((2 * degree) - 2 - butterflies)
+    return clustering / clonotypes
 
 
-def _preferential_degree(probability, epitopes, clonotypes, crossreactivity):
+def _preferential_degree(
+    recognition_probability, clonotypes, epitopes, crossreactivity
+):
+    """
+    Calculates the expected value of the degree of VDP nodes in a preferential attachment network.
+
+    Parameters
+    ----------
+    recognition_probability : float
+        Base epitope recognition probability.
+    clonotypes : int
+        Number of clonotypes in the network.
+    epitopes : int
+        Number of epitopes in the network.
+    crossreactivity : float
+        Base cross-reactivity probability.
+
+    Returns
+    -------
+    float
+        Expected value of the degree of VDP nodes.
+    """
+    probabilities, crossreactivities = _preferential_probabilities(
+        recognition_probability, clonotypes, epitopes, crossreactivity
+    )
     value = 0
-    for epitope in range(1, epitopes):
+    for current_clone in range(clonotypes - 1):
         value += (
-            epitope
-            * comb(epitopes, epitope)
-            * probability**epitope
-            * (1 - probability) ** (epitopes - epitope)
+            (clonotypes - current_clone - 1)
+            * probabilities[current_clone]
+            * crossreactivities[current_clone]
         )
-    return (probability * clonotypes) + (probability * crossreactivity * value)
+    return (recognition_probability * clonotypes) + (
+        (1 - recognition_probability) * value
+    )
 
 
-def _preferential_probability():
-    return 0
+def _preferential_probabilities(
+    recognition_probability, clonotypes, epitopes, crossreactivity
+):
+    """
+    Calculates the preferential attachment probabilities and the cross-reactivity probabilities for a preferential attachment network.
+
+    Parameters
+    ----------
+    recognition_probability : float
+        Base epitope recognition probability.
+    clonotypes : int
+        Number of clonotypes in the network.
+    epitopes : int
+        Number of epitopes in the network.
+    crossreactivity : float
+        Base cross-reactivity probability.
+
+    Returns
+    -------
+    tuple[list[float]]
+        List of preferential attachment probabilities and list of cross-reactivity probabilities
+    """
+    probabilities = [recognition_probability]
+    for current_probability in range(1, clonotypes):
+        current_value = 0
+        for current_clone in range(current_probability):
+            current_value += probabilities[
+                current_clone
+            ] * _preferential_cross_reactivity(
+                probabilities, current_clone, epitopes, crossreactivity
+            )
+        probabilities.append(
+            recognition_probability + ((1 - recognition_probability) * current_value)
+        )
+    crossreactivities = [
+        _preferential_cross_reactivity(probabilities, clone, epitopes, crossreactivity)
+        for clone in range(clonotypes)
+    ]
+    return probabilities, crossreactivities
+
+
+def _preferential_cross_reactivity(probabilities, clonotype, epitopes, crossreactivity):
+    """
+    Calculates the cross-reactive recognition probability for ``clonotype`` in a network with ``epitopes`` number of epitopes, a base cross-reactivity probability of ``crossreactivity``.
+
+    Parameters
+    ----------
+    probabilities : list[float]
+        List of preferential attachment probabilities.
+    clonotype : int
+        Clonotype for which the probability is calculated.
+    epitopes : int
+        Number of epitopes in the network.
+    crossreactivity : float
+        Base cross-reactivity probability.
+
+    Returns
+    -------
+    float
+        Cross-reactive recognition probability.
+    """
+    value = 0
+    for current_epitope in range(1, epitopes + 1):
+        current_value = comb(epitopes, current_epitope)
+        current_value *= (
+            probabilities[0] * probabilities[clonotype]
+        ) ** current_epitope
+        current_value *= (1 - (probabilities[0] * probabilities[clonotype])) ** (
+            epitopes - current_epitope
+        )
+        value += (
+            current_value
+            * (current_epitope / epitopes)
+            * crossreactivity
+            * probabilities[0]
+        )
+    return value

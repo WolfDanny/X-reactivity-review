@@ -21,6 +21,6 @@ plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
 # %% Parameters
 
-
+recognition_probabilities = np.linspace(0, 1, 30)
 num_clonotypes = 8
 num_epitopes = 20
