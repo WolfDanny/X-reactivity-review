@@ -33,7 +33,7 @@ class Peptide:
 
     def add_clonotype(self, clone):
         """
-        Adds a clonotype to the list of clonotypes that recognise the peptide and increases *recognised* by 1.
+        Adds a clonotype to the list of clonotypes that recognise the peptide and increases ``recognised`` by 1.
 
         Parameters
         ----------
@@ -176,13 +176,13 @@ class Clonotype:
         self, peptide_list, network_type, degree=None, subset=None, clone_list=None
     ):
         """
-        Checks if peptides in *peptide_list* will be recognised by the clonotype.
+        Checks if peptides in ``peptide_list`` will be recognised by the clonotype.
 
-        The parameter *network_type* represents the type of recognition network being constructed, where 0 is an unfocussed network, 1 is a degree focussed network, and 2 is a preferential attachment focussed network.
+        The parameter ``network_type`` represents the type of recognition network being constructed, where 0 is an unfocussed network, 1 is a degree focussed network, and 2 is a preferential attachment focussed network.
 
         - For an unfocussed network no optional parameters are necessary.
         - For a degree focused network the *degree* parameter is necessary.
-        - For a preferential attachment focussed network the *clone_list* parameter is necessary.
+        - For a preferential attachment focussed network the ``clone_list`` parameter is necessary.
 
         Parameters
         ----------
@@ -489,7 +489,7 @@ class Clonotype:
         """
         Updates the population when a differentiation event occurs.
 
-        The parameter *starting_compartment* represents the starting compartment of the cell, where
+        The parameter ``starting_compartment`` represents the starting compartment of the cell, where
 
         - 0 means the cell started in the naive compartment,
         - 1 means the cell started in the effector compartment,
@@ -514,7 +514,7 @@ class Clonotype:
 
 def clone_sets(dimension, clone):
     """
-    Creates an ordered list of tuples representing all subsets of a set of *dimension* elements that include the *clone*-th element.
+    Creates an ordered list of tuples representing all subsets of a set of ``dimension`` elements that include the *clone*-th element.
 
     Parameters
     ----------
@@ -557,7 +557,7 @@ def gillespie_step(
     """
     Performs a step of the Gillespie simulation and returns the updated state and time.
 
-    If *time_limit* is included and the step makes *time* greater than *time_limit* returns the current state and *time_limit*.
+    If ``time_limit`` is included and the step makes ``time`` greater than ``time_limit`` returns the current state and ``time_limit``.
 
     Parameters
     ----------
