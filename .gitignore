@@ -16,6 +16,7 @@
 *.zip
 *.pdf
 *.tex
+*.icloud
 
 # Icon must end with two \r
 Icon

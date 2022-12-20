@@ -5,6 +5,7 @@ from copy import deepcopy
 from random import seed, getstate, setstate
 import pickle
 import crossreactivity.definitions as xr
+import numpy as np
 
 # %% Parameters
 

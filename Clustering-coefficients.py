@@ -28,7 +28,7 @@ recognition_probabilities = np.linspace(0, 1, 100)
 clonotypes = 8
 epitopes = 20
 variations = 5
-crossreactivities = np.linspace(0.01, 0.3, variations)
+crossreactivities = np.linspace(0, 0.6, variations)
 mmsb_epitopes = [
     [
         xr.epitope_recognition_vector(epitopes, blocks, probability / 2, probability)

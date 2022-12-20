@@ -13,21 +13,21 @@ from random import uniform, sample
 class Peptide:
     """Class to represent peptides"""
 
-    def __init__(self, probability_value, position_value, stimulus_value):
+    def __init__(self, probability, position, stimulus):
         """
         Parameters
         ----------
-        probability_value : float
+        probability : float
             Probability of peptide being recognised.
-        position_value : int
+        position : int
             Number of the peptide.
-        stimulus_value : float
+        stimulus : float
             Stimulus provided by the peptide.
         """
 
-        self.probability = probability_value
-        self.position = position_value
-        self.stimulus = stimulus_value
+        self.probability = probability
+        self.position = position
+        self.stimulus = stimulus
         self.clonotypes = []
         self.recognised = 0
 
@@ -57,7 +57,7 @@ class Peptide:
         Returns
         -------
         float
-            Stimulus provided to a cell that recognises the peptide
+            Stimulus provided to a cell that recognises the peptide.
         """
 
         cells = 0
@@ -107,13 +107,13 @@ class Clonotype:
         naive_death_rate : float
             Death rate for a naive cell.
         effector_death_rate : float
-            Death rate for an effector cell
+            Death rate for an effector cell.
         memory_death_rate : float
             Death rate for a memory cell.
         naive_differentiation_constant : float
-            Differentiation constant from naive to effector
+            Differentiation constant from naive to effector.
         memory_differentiation_constant : float
-            Differentiation constant from memory to effector
+            Differentiation constant from memory to effector.
         effector_differentiation_rate : float
             Differentiation rate from effector to memory.
         """
@@ -144,7 +144,7 @@ class Clonotype:
         Returns
         -------
         list[int]
-            List of the current cell populations in the 3 compartments
+            List of the current cell populations in the 3 compartments.
         """
 
         return [self.naive, self.effector + self.effector_dividing, self.memory]
@@ -156,7 +156,7 @@ class Clonotype:
         Returns
         -------
         int
-            Total number of cells
+            Total number of cells.
         """
         return self.naive + self.effector + self.effector_dividing + self.memory
 
@@ -475,7 +475,7 @@ class Clonotype:
         Parameters
         ----------
         compartment : int
-            Compartment in which the birth takes place
+            Compartment in which the birth takes place.
         """
 
         if compartment == 0:
@@ -711,7 +711,7 @@ def epitope_recognition_vector(epitopes, blocks, p_min, p_max):
     Returns
     -------
     list[float]
-        List of recognition probabilities
+        List of recognition probabilities.
     """
     probabilities = np.linspace(p_max, p_min, blocks)
     vector = []
@@ -833,7 +833,7 @@ def _erdos_renyi(recognition_probability, clonotypes, **kwargs):
     Parameters
     ----------
     recognition_probability : float
-        VDP recognition probability.
+        Epitope recognition probability.
     clonotypes : int
         Number of clonotypes.
 
@@ -923,7 +923,7 @@ def _preferential_attachment(
     epitopes : int
         Number of epitopes in the network.
     crossreactivity : float
-        Base cross-reactivity probability.
+        Base cross-reactivity constant.
 
     Returns
     -------
@@ -961,7 +961,7 @@ def _preferential_degree(
     epitopes : int
         Number of epitopes in the network.
     crossreactivity : float
-        Base cross-reactivity probability.
+        Base cross-reactivity constant.
 
     Returns
     -------
@@ -1003,7 +1003,7 @@ def _preferential_probabilities(
     Returns
     -------
     tuple[list[float]]
-        List of preferential attachment probabilities and list of cross-reactivity probabilities
+        List of preferential attachment probabilities and list of cross-reactivity probabilities.
     """
     probabilities = [recognition_probability]
     for current_probability in range(1, clonotypes):
